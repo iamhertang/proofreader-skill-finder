@@ -3,12 +3,10 @@ import type { AnalysedRow, ContentType } from './types'
 
 // ⚠️ FLAG: Set ANTHROPIC_API_KEY in .env.local and Vercel env vars
 // Base URL points to the internal OpenAI-compatible LLM gateway
-// The internal gateway hard-cuts connections at ~10s regardless of our timeout.
-// maxRetries: 0 avoids wasting 3× that time on doomed retries.
 const client = new OpenAI({
   apiKey: process.env.ANTHROPIC_API_KEY,
   baseURL: 'https://athenai.mihoyo.com/v1',
-  timeout: 9_000,
+  timeout: 240_000,
   maxRetries: 0,
 })
 
