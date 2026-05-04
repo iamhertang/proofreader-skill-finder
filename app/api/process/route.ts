@@ -6,6 +6,7 @@ import { analyseCorrectionPatterns } from '@/lib/llm'
 import { insertRun } from '@/lib/db'
 import { LANGUAGES } from '@/lib/types'
 import type { SSEEvent, Row, LanguageCode } from '@/lib/types'
+import OpenAI from 'openai'
 
 // Allow up to 300s for streaming on Vercel Pro; free tier allows ~60s
 export const maxDuration = 300
@@ -120,7 +121,16 @@ export async function POST(request: Request) {
         // Step 7 — Done
         send({ step: 7, label: 'Done!', pct: 100, result: skillMd, stats, runId })
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'An unexpected error occurred.'
+        console.error('[process] Pipeline error:', err)
+        let message = 'An unexpected error occurred.'
+        if (err instanceof OpenAI.APIError) {
+          message = `LLM API error (HTTP ${err.status} ${err.name}): ${err.message}`
+          if (err.error && typeof err.error === 'object' && 'message' in err.error) {
+            message += `\nGateway detail: ${(err.error as { message: string }).message}`
+          }
+        } else if (err instanceof Error) {
+          message = err.message
+        }
         send({ error: message })
       }
 

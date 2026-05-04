@@ -344,7 +344,8 @@ export default function HomePage() {
       {/* Error */}
       {appState === 'error' && errorMsg && (
         <div className="bg-red-50 border border-red-200 rounded-3xl p-6 space-y-3">
-          <p className="font-bold text-red-700">⚠️ {errorMsg}</p>
+          <p className="font-bold text-red-700 mb-2">⚠️ Analysis failed</p>
+          <pre className="text-sm text-red-800 bg-red-100 rounded-xl p-3 whitespace-pre-wrap break-words font-mono overflow-auto max-h-48">{errorMsg}</pre>
           <button
             onClick={handleReset}
             className="px-5 py-2 rounded-full bg-red-100 hover:bg-red-200 text-red-700 font-bold text-sm transition-all"
