@@ -5,10 +5,12 @@ import type { AnalysedRow, ContentType } from './types'
 // Base URL points to the internal OpenAI-compatible LLM gateway
 const client = new OpenAI({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+  baseURL: 'https://athenai.mihoyo.com/v1',
+  timeout: 240_000,
+  maxRetries: 0,
 })
 
-const MODEL = 'gemini-2.0-flash-lite'
+const MODEL = 'claude-sonnet-4-6'
 
 const LANGUAGE_NAMES: Record<string, string> = {
   EN: 'English',
