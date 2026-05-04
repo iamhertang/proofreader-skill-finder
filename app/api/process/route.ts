@@ -4,10 +4,19 @@ import { analyseRows } from '@/lib/diff'
 import { computeStats, generateSkillMd } from '@/lib/skill-generator'
 import { analyseCorrectionPatterns } from '@/lib/llm'
 import { insertRun } from '@/lib/db'
-import type { SSEEvent, Row } from '@/lib/types'
+import { LANGUAGES } from '@/lib/types'
+import type { SSEEvent, Row, LanguageCode } from '@/lib/types'
 
 // Allow up to 300s for streaming on Vercel Pro; free tier allows ~60s
 export const maxDuration = 300
+
+const ALLOWED_LANGUAGE_CODES: string[] = LANGUAGES.map((l) => l.code)
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+const MAX_ROWS = 5000
+
+function sanitiseFilename(name: string): string {
+  return name.replace(/[^a-zA-Z0-9._\-() ]/g, '_').slice(0, 200)
+}
 
 export async function POST(request: Request) {
   let formData: FormData
@@ -18,11 +27,24 @@ export async function POST(request: Request) {
   }
 
   const file = formData.get('file') as File | null
-  const language = (formData.get('language') as string) || 'EN'
+  const rawLanguage = (formData.get('language') as string) || 'EN'
 
   if (!file) {
     return new Response('No file provided', { status: 400 })
   }
+
+  // Validate file type server-side
+  if (!file.name.toLowerCase().endsWith('.xlsx')) {
+    return new Response('Only .xlsx files are accepted', { status: 400 })
+  }
+
+  // Enforce file size server-side (client check is bypassable)
+  if (file.size > MAX_FILE_SIZE) {
+    return new Response('File exceeds 50 MB limit', { status: 413 })
+  }
+
+  // Whitelist language to prevent prompt injection via this field
+  const language = (ALLOWED_LANGUAGE_CODES.includes(rawLanguage) ? rawLanguage : 'EN') as LanguageCode
 
   const encoder = new TextEncoder()
 
@@ -48,7 +70,13 @@ export async function POST(request: Request) {
 
         // Step 3 — Diff
         send({ step: 3, label: 'Computing diffs…', pct: 35 })
-        const analysed = analyseRows(parsed.rows as Row[], language)
+        const rows = parsed.rows as Row[]
+        if (rows.length > MAX_ROWS) {
+          send({ error: `File contains ${rows.length} rows. Maximum allowed is ${MAX_ROWS}.` })
+          controller.close()
+          return
+        }
+        const analysed = analyseRows(rows, language)
 
         // Step 4 — Content types
         send({ step: 4, label: 'Classifying content types…', pct: 50 })
@@ -66,7 +94,7 @@ export async function POST(request: Request) {
         let blobUrl: string | null = null
         if (process.env.BLOB_READ_WRITE_TOKEN) {
           try {
-            const blob = await put(`runs/${Date.now()}-${file.name}`, buffer, {
+            const blob = await put(`runs/${Date.now()}-${sanitiseFilename(file.name)}`, buffer, {
               access: 'public',
             })
             blobUrl = blob.url

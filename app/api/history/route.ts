@@ -5,7 +5,7 @@ export async function GET() {
     const runs = await listRuns()
     return Response.json(runs)
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Failed to fetch history.'
-    return Response.json({ error: message }, { status: 500 })
+    console.error('[history GET]', err)
+    return Response.json({ error: 'Failed to fetch history.' }, { status: 500 })
   }
 }
