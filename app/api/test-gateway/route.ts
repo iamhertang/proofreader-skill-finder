@@ -1,21 +1,17 @@
-const MODELS = [
-  'claude-sonnet-4-6',
-  'aws/claude-sonnet-4-6',
-  'zenlayer/claude-sonnet-4-6',
-  'claude-haiku-4-5-20251001',
-]
+export async function GET() {
+  const apiKey = process.env.ANTHROPIC_API_KEY ?? ''
+  if (!apiKey) return Response.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 })
 
-async function testModel(model: string, apiKey: string) {
   const start = Date.now()
   try {
-    const res = await fetch('https://athenai.mihoyo.com/v1/chat/completions', {
+    const res = await fetch('https://generativelanguage.googleapis.com/v1beta/openai/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model,
+        model: 'gemini-2.0-flash-lite',
         max_tokens: 10,
         stream: false,
         messages: [{ role: 'user', content: 'Say hi.' }],
@@ -25,21 +21,12 @@ async function testModel(model: string, apiKey: string) {
     const text = await res.text()
     let body: unknown = text
     try { body = JSON.parse(text) } catch { /* keep as raw text */ }
-    return { model, ok: res.ok, status: res.status, elapsed_ms: elapsed, body }
+    return Response.json({ ok: res.ok, status: res.status, elapsed_ms: elapsed, body })
   } catch (err: unknown) {
-    return {
-      model,
+    return Response.json({
       ok: false,
       elapsed_ms: Date.now() - start,
       error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
-    }
+    }, { status: 502 })
   }
-}
-
-export async function GET() {
-  const apiKey = process.env.ANTHROPIC_API_KEY ?? ''
-  if (!apiKey) return Response.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 })
-
-  const results = await Promise.all(MODELS.map((m) => testModel(m, apiKey)))
-  return Response.json(results, { status: 200 })
 }
