@@ -10,7 +10,7 @@ const client = new OpenAI({
   maxRetries: 0,
 })
 
-const MODEL = 'aws/claude-sonnet-4-6'
+const MODEL = 'claude-sonnet-4-6'
 
 const LANGUAGE_NAMES: Record<string, string> = {
   EN: 'English',
