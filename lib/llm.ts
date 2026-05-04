@@ -1,9 +1,14 @@
-import Anthropic from '@anthropic-ai/sdk'
+import OpenAI from 'openai'
 import type { AnalysedRow, ContentType } from './types'
 
-// ⚠️ FLAG: Set ANTHROPIC_API_KEY=your_key_here in .env.local
-// Get your key at https://console.anthropic.com
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+// ⚠️ FLAG: Set ANTHROPIC_API_KEY in .env.local and Vercel env vars
+// Base URL points to the internal OpenAI-compatible LLM gateway
+const client = new OpenAI({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+  baseURL: 'https://athenai.mihoyo.com/v1',
+})
+
+const MODEL = 'claude-sonnet-4-6'
 
 const LANGUAGE_NAMES: Record<string, string> = {
   EN: 'English',
@@ -106,19 +111,15 @@ export async function analyseCorrectionPatterns(
 
   let result = ''
 
-  const stream = client.messages.stream({
-    model: 'claude-sonnet-4-6',
+  const stream = await client.chat.completions.create({
+    model: MODEL,
     max_tokens: 4096,
     messages: [{ role: 'user', content: prompt }],
+    stream: true,
   })
 
   for await (const chunk of stream) {
-    if (
-      chunk.type === 'content_block_delta' &&
-      chunk.delta.type === 'text_delta'
-    ) {
-      result += chunk.delta.text
-    }
+    result += chunk.choices[0]?.delta?.content ?? ''
   }
 
   return result
