@@ -3,10 +3,13 @@ import type { AnalysedRow, ContentType } from './types'
 
 // ⚠️ FLAG: Set ANTHROPIC_API_KEY in .env.local and Vercel env vars
 // Base URL points to the internal OpenAI-compatible LLM gateway
+// The internal gateway hard-cuts connections at ~10s regardless of our timeout.
+// maxRetries: 0 avoids wasting 3× that time on doomed retries.
 const client = new OpenAI({
   apiKey: process.env.ANTHROPIC_API_KEY,
   baseURL: 'https://athenai.mihoyo.com/v1',
-  timeout: 280_000,
+  timeout: 9_000,
+  maxRetries: 0,
 })
 
 const MODEL = 'claude-sonnet-4-6'
@@ -25,8 +28,10 @@ const LANGUAGE_NAMES: Record<string, string> = {
   RU: 'Russian',
 }
 
-const MAX_CORRECTIONS_PER_TYPE = 20
-const MAX_ACCEPTED_PER_TYPE = 5
+// Keep examples minimal — gateway has a ~10s hard timeout.
+// Fewer tokens in = faster first token out = more likely to complete.
+const MAX_CORRECTIONS_PER_TYPE = 5
+const MAX_ACCEPTED_PER_TYPE = 2
 
 function buildPrompt(rows: AnalysedRow[], lang: string): string {
   const langName = LANGUAGE_NAMES[lang] ?? lang
