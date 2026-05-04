@@ -8,7 +8,7 @@ const client = new OpenAI({
   baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
 })
 
-const MODEL = 'gemini-2.0-flash'
+const MODEL = 'gemini-2.0-flash-lite'
 
 const LANGUAGE_NAMES: Record<string, string> = {
   EN: 'English',
