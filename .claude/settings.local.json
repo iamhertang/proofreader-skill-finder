@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx next *)",
+      "Bash(del \"D:\\\\Claude Code Workspace\\\\Proofreader Skill Finder\\\\next.config.ts\")",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}
