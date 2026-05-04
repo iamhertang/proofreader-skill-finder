@@ -20,19 +20,18 @@ async function testModel(model: string, apiKey: string) {
         stream: false,
         messages: [{ role: 'user', content: 'Say hi.' }],
       }),
-      signal: AbortSignal.timeout(20_000),
     })
     const elapsed = Date.now() - start
     const text = await res.text()
-    let body
-    try { body = JSON.parse(text) } catch { body = text }
+    let body: unknown = text
+    try { body = JSON.parse(text) } catch { /* keep as raw text */ }
     return { model, ok: res.ok, status: res.status, elapsed_ms: elapsed, body }
   } catch (err: unknown) {
     return {
       model,
       ok: false,
       elapsed_ms: Date.now() - start,
-      error: err instanceof Error ? err.message : String(err),
+      error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
     }
   }
 }
