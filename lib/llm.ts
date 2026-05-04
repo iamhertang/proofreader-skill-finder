@@ -6,6 +6,7 @@ import type { AnalysedRow, ContentType } from './types'
 const client = new OpenAI({
   apiKey: process.env.ANTHROPIC_API_KEY,
   baseURL: 'https://athenai.mihoyo.com/v1',
+  timeout: 280_000,
 })
 
 const MODEL = 'claude-sonnet-4-6'
@@ -24,7 +25,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   RU: 'Russian',
 }
 
-const MAX_CORRECTIONS_PER_TYPE = 50
+const MAX_CORRECTIONS_PER_TYPE = 20
 const MAX_ACCEPTED_PER_TYPE = 5
 
 function buildPrompt(rows: AnalysedRow[], lang: string): string {
