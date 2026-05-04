@@ -113,18 +113,12 @@ export async function analyseCorrectionPatterns(
 ): Promise<string> {
   const prompt = buildPrompt(rows, lang)
 
-  let result = ''
-
-  const stream = await client.chat.completions.create({
+  const response = await client.chat.completions.create({
     model: MODEL,
-    max_tokens: 4096,
+    max_tokens: 2000,
     messages: [{ role: 'user', content: prompt }],
-    stream: true,
+    stream: false,
   })
 
-  for await (const chunk of stream) {
-    result += chunk.choices[0]?.delta?.content ?? ''
-  }
-
-  return result
+  return response.choices[0]?.message?.content ?? ''
 }
