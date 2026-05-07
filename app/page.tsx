@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { LANGUAGES, type LanguageCode, type Stats, type SSEEvent } from '@/lib/types'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -14,6 +14,9 @@ const STEPS = [
   { step: 6, label: 'Generating Skill file' },
   { step: 7, label: 'Done!' },
 ]
+
+// Step 5 is the slow LLM call — show a patience hint after this many seconds
+const LLM_PATIENCE_THRESHOLD_S = 8
 
 type AppState = 'idle' | 'running' | 'done' | 'error'
 
@@ -33,6 +36,11 @@ function StatChip({ label, value, color }: { label: string; value: string | numb
   )
 }
 
+function formatElapsed(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -44,9 +52,31 @@ export default function HomePage() {
   const [steps, setSteps] = useState<StepState[]>(
     STEPS.map((s) => ({ status: 'pending', label: s.label })),
   )
+  const [pct, setPct] = useState(0)
+  const [activeStep, setActiveStep] = useState(0)
+  const [elapsed, setElapsed] = useState(0)
   const [result, setResult] = useState<{ skillMd: string; stats: Stats } | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // ── Elapsed timer ──────────────────────────────────────────────────────────
+
+  const startTimer = useCallback(() => {
+    setElapsed(0)
+    timerRef.current = setInterval(() => {
+      setElapsed((s) => s + 1)
+    }, 1000)
+  }, [])
+
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => () => stopTimer(), [stopTimer])
 
   // ── File handling ──────────────────────────────────────────────────────────
 
@@ -91,22 +121,35 @@ export default function HomePage() {
     setAppState('running')
     setErrorMsg(null)
     setResult(null)
+    setPct(0)
+    setActiveStep(0)
     setSteps(STEPS.map((s) => ({ status: 'pending', label: s.label })))
+    startTimer()
 
     const formData = new FormData()
     formData.append('file', file)
     formData.append('language', language)
 
+    // AbortController lets us cancel the fetch (and stop the LLM call) as soon
+    // as we receive a terminal event (error or pct=100), preventing the while
+    // loop from spinning forever and consuming extra tokens.
+    const abortCtrl = new AbortController()
+
     try {
-      const response = await fetch('/api/process', { method: 'POST', body: formData })
+      const response = await fetch('/api/process', {
+        method: 'POST',
+        body: formData,
+        signal: abortCtrl.signal,
+      })
 
       if (!response.body) throw new Error('No response body from server.')
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      let finished = false
 
-      while (true) {
+      while (!finished) {
         const { done, value } = await reader.read()
         if (done) break
 
@@ -124,12 +167,20 @@ export default function HomePage() {
           }
 
           if (event.error) {
+            stopTimer()
             setErrorMsg(event.error)
             setAppState('error')
-            return
+            finished = true   // exit the while loop
+            abortCtrl.abort() // cancel the fetch/stream
+            break             // exit the for loop
+          }
+
+          if (event.pct !== undefined) {
+            setPct(event.pct)
           }
 
           if (event.step !== undefined) {
+            setActiveStep(event.step)
             const stepIdx = event.step - 1
             setSteps((prev) =>
               prev.map((s, i) => {
@@ -141,13 +192,21 @@ export default function HomePage() {
           }
 
           if (event.pct === 100 && event.result && event.stats) {
+            stopTimer()
+            setPct(100)
             setSteps(STEPS.map((s) => ({ status: 'done', label: s.label })))
             setResult({ skillMd: event.result, stats: event.stats })
             setAppState('done')
+            finished = true   // exit the while loop
+            abortCtrl.abort() // cancel the fetch/stream
+            break             // exit the for loop
           }
         }
       }
     } catch (err: unknown) {
+      // AbortError is expected when we call abortCtrl.abort() — not a real error
+      if (err instanceof Error && err.name === 'AbortError') return
+      stopTimer()
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred.'
       setErrorMsg(msg)
       setAppState('error')
@@ -155,11 +214,15 @@ export default function HomePage() {
   }
 
   const handleReset = () => {
+    stopTimer()
     setAppState('idle')
     setFile(null)
     setFileError(null)
     setResult(null)
     setErrorMsg(null)
+    setPct(0)
+    setActiveStep(0)
+    setElapsed(0)
     setSteps(STEPS.map((s) => ({ status: 'pending', label: s.label })))
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -172,7 +235,7 @@ export default function HomePage() {
     a.href = url
     a.download = `skill-${language.toLowerCase()}-${Date.now()}.md`
     a.click()
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 100)
   }
 
   const downloadTemplate = async () => {
@@ -181,6 +244,9 @@ export default function HomePage() {
     a.download = 'TranslationDatasetTemplate.xlsx'
     a.click()
   }
+
+  // Patience hint: show when stuck on LLM step for a while
+  const showPatienceHint = appState === 'running' && activeStep === 5 && elapsed >= LLM_PATIENCE_THRESHOLD_S
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -306,8 +372,68 @@ export default function HomePage() {
 
       {/* Progress Section */}
       {(appState === 'running' || appState === 'done' || appState === 'error') && (
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8">
-          <h2 className="font-extrabold text-slate-800 text-xl mb-6">Pipeline Progress</h2>
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 space-y-6">
+
+          {/* Header row: title + elapsed timer */}
+          <div className="flex items-center justify-between">
+            <h2 className="font-extrabold text-slate-800 text-xl">Pipeline Progress</h2>
+            {appState === 'running' && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-seafoam/10 border border-seafoam/20">
+                {/* Heartbeat dot */}
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-seafoam opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-seafoam" />
+                </span>
+                <span className="text-xs font-bold text-teal-700 tabular-nums">
+                  {formatElapsed(elapsed)}
+                </span>
+              </div>
+            )}
+            {appState === 'done' && (
+              <span className="text-xs font-bold text-teal-600 bg-mint/20 px-3 py-1.5 rounded-full">
+                Completed in {formatElapsed(elapsed)}
+              </span>
+            )}
+          </div>
+
+          {/* Progress bar */}
+          <div className="space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Progress</span>
+              <span className="text-xs font-black text-slate-600 tabular-nums">{pct}%</span>
+            </div>
+            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full relative overflow-hidden transition-all duration-500 ease-out"
+                style={{
+                  width: `${pct}%`,
+                  background: appState === 'done'
+                    ? 'linear-gradient(90deg, #4ecca3, #38b2ac)'
+                    : 'linear-gradient(90deg, #4eccca, #4ecca3)',
+                }}
+              >
+                {/* Shimmer overlay — only while running */}
+                {appState === 'running' && (
+                  <span className="absolute inset-0 progress-shimmer" />
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Patience hint for LLM step */}
+          {showPatienceHint && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-amber-50 border border-amber-200">
+              <span className="text-xl mt-0.5">🧠</span>
+              <div>
+                <p className="text-sm font-bold text-amber-800">LLM is thinking…</p>
+                <p className="text-xs text-amber-600 mt-0.5">
+                  The AI is analysing your correction data. This can take up to 2 minutes — please don&apos;t close the tab.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Step list */}
           <ol className="space-y-3">
             {steps.map((s, i) => (
               <li key={i} className="flex items-center gap-4">
@@ -335,6 +461,10 @@ export default function HomePage() {
                 >
                   {s.label}
                 </span>
+                {/* Spinner on active step */}
+                {s.status === 'active' && appState === 'running' && (
+                  <span className="ml-auto text-seafoam animate-spin text-base">⚙️</span>
+                )}
               </li>
             ))}
           </ol>

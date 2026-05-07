@@ -1,4 +1,4 @@
-import { put } from '@vercel/blob'
+import { saveUploadedFile } from '@/lib/storage'
 import { parseAndValidate } from '@/lib/excel'
 import { analyseRows } from '@/lib/diff'
 import { computeStats, generateSkillMd } from '@/lib/skill-generator'
@@ -34,9 +34,14 @@ export async function POST(request: Request) {
     return new Response('No file provided', { status: 400 })
   }
 
-  // Validate file type server-side
+  // Validate file type server-side — extension check + magic bytes (PK\x03\x04 = ZIP/XLSX)
   if (!file.name.toLowerCase().endsWith('.xlsx')) {
     return new Response('Only .xlsx files are accepted', { status: 400 })
+  }
+  const headerBytes = await file.slice(0, 4).arrayBuffer()
+  const magic = new Uint8Array(headerBytes)
+  if (magic[0] !== 0x50 || magic[1] !== 0x4B || magic[2] !== 0x03 || magic[3] !== 0x04) {
+    return new Response('File does not appear to be a valid .xlsx file', { status: 400 })
   }
 
   // Enforce file size server-side (client check is bypassable)
@@ -48,11 +53,19 @@ export async function POST(request: Request) {
   const language = (ALLOWED_LANGUAGE_CODES.includes(rawLanguage) ? rawLanguage : 'EN') as LanguageCode
 
   const encoder = new TextEncoder()
+  let controllerClosed = false
 
   const stream = new ReadableStream({
     async start(controller) {
       const send = (event: SSEEvent) => {
+        if (controllerClosed) return
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+      }
+
+      const close = () => {
+        if (controllerClosed) return
+        controllerClosed = true
+        controller.close()
       }
 
       try {
@@ -65,7 +78,7 @@ export async function POST(request: Request) {
         const parsed = parseAndValidate(buffer)
         if (parsed.error) {
           send({ error: parsed.error })
-          controller.close()
+          close()
           return
         }
 
@@ -74,7 +87,7 @@ export async function POST(request: Request) {
         const rows = parsed.rows as Row[]
         if (rows.length > MAX_ROWS) {
           send({ error: `File contains ${rows.length} rows. Maximum allowed is ${MAX_ROWS}.` })
-          controller.close()
+          close()
           return
         }
         const analysed = analyseRows(rows, language)
@@ -91,17 +104,12 @@ export async function POST(request: Request) {
         send({ step: 6, label: 'Generating Skill file…', pct: 85 })
         const skillMd = generateSkillMd(language, file.name, stats, llmAnalysis)
 
-        // Step 6b — Upload original file to Blob + persist to Neon
+        // Step 6b — Save original file to local disk + persist to SQLite
         let blobUrl: string | null = null
-        if (process.env.BLOB_READ_WRITE_TOKEN) {
-          try {
-            const blob = await put(`runs/${Date.now()}-${sanitiseFilename(file.name)}`, buffer, {
-              access: 'public',
-            })
-            blobUrl = blob.url
-          } catch {
-            // Non-fatal — continue without Blob storage
-          }
+        try {
+          blobUrl = await saveUploadedFile(buffer, sanitiseFilename(file.name))
+        } catch {
+          // Non-fatal — continue without file archiving
         }
 
         let runId: string | null = null
@@ -134,7 +142,7 @@ export async function POST(request: Request) {
         send({ error: message })
       }
 
-      controller.close()
+      close()
     },
   })
 

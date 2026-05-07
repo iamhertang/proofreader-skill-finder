@@ -17,3 +17,9 @@ out/
 .DS_Store
 *.pem
 npm-debug.log*
+
+# Titan sandbox config
+.titan/
+
+# Local runtime data (SQLite DB + uploaded files)
+data/

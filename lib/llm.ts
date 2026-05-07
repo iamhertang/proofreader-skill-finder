@@ -1,10 +1,12 @@
 import OpenAI from 'openai'
 import type { AnalysedRow, ContentType } from './types'
 
-// ⚠️ FLAG: Set ANTHROPIC_API_KEY in .env.local and Vercel env vars
-// Base URL points to the internal OpenAI-compatible LLM gateway
+// Set ATHENAI_API_KEY in .env.local — get from the AthenAI gateway dashboard.
+// NOTE: Previously misnamed ANTHROPIC_API_KEY (security fix: misleading name
+// risked pasting an Anthropic key instead of the internal gateway token).
+// Base URL points to the internal OpenAI-compatible AthenAI gateway.
 const client = new OpenAI({
-  apiKey: process.env.ANTHROPIC_API_KEY,
+  apiKey: process.env.ATHENAI_API_KEY,
   baseURL: 'https://athenai.mihoyo.com/v1',
   timeout: 240_000,
   maxRetries: 0,
@@ -113,12 +115,24 @@ export async function analyseCorrectionPatterns(
 ): Promise<string> {
   const prompt = buildPrompt(rows, lang)
 
-  const response = await client.chat.completions.create({
+  const t0 = Date.now()
+  console.log(`[llm] Starting LLM call — prompt length: ${prompt.length} chars`)
+
+  // Use streaming so tokens flow through as they arrive rather than waiting
+  // for the full response to be buffered on the gateway (which causes the
+  // multi-minute hang with stream:false + large max_tokens).
+  const stream = await client.chat.completions.create({
     model: MODEL,
-    max_tokens: 2000,
+    max_tokens: 1200,
     messages: [{ role: 'user', content: prompt }],
-    stream: false,
+    stream: true,
   })
 
-  return response.choices[0]?.message?.content ?? ''
+  let result = ''
+  for await (const chunk of stream) {
+    result += chunk.choices[0]?.delta?.content ?? ''
+  }
+
+  console.log(`[llm] LLM call complete — ${Date.now() - t0}ms, ${result.length} chars`)
+  return result
 }

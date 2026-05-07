@@ -37,8 +37,13 @@ async function testModel(model: string, apiKey: string) {
 }
 
 export async function GET() {
-  const apiKey = process.env.ANTHROPIC_API_KEY ?? ''
-  if (!apiKey) return Response.json({ error: 'ANTHROPIC_API_KEY not set' }, { status: 500 })
+  // Security fix: gate this debug endpoint so it only works outside production.
+  if (process.env.NODE_ENV === 'production') {
+    return new Response('Not Found', { status: 404 })
+  }
+
+  const apiKey = process.env.ATHENAI_API_KEY ?? ''
+  if (!apiKey) return Response.json({ error: 'ATHENAI_API_KEY not set' }, { status: 500 })
 
   const results = await Promise.all(MODELS.map((m) => testModel(m, apiKey)))
   return Response.json(results, { status: 200 })

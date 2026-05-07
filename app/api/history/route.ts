@@ -1,5 +1,8 @@
 import { listRuns } from '@/lib/db'
 
+// Force dynamic so Next.js never statically caches this response
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const runs = await listRuns()

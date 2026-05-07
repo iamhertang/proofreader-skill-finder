@@ -44,7 +44,8 @@ function HistoryCard({
     a.href = url
     a.download = `skill-${run.language.toLowerCase()}-${run.id.slice(0, 8)}.md`
     a.click()
-    URL.revokeObjectURL(url)
+    // Delay revocation so browser has time to start the download
+    setTimeout(() => URL.revokeObjectURL(url), 100)
   }
 
   const { stats } = run
