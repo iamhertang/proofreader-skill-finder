@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proofreader Skill Finder — Concept Map</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --border: #e2e5ea;
+    --border-active: #1a1a2e;
+    --text-primary: #111318;
+    --text-secondary: #5a6270;
+    --text-muted: #9299a3;
+    --accent: #1a1a2e;
+    --accent-light: #eef0f5;
+    --accent-hover: #2d2d4e;
+    --tag-bg: #f0f1f4;
+    --shadow-sm: 0 1px 4px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.08);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    background: var(--accent);
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .page-header h1 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.01em;
+  }
+  .page-header p {
+    font-size: 0.8rem;
+    color: rgba(255,255,255,0.5);
+    margin-top: 2px;
+  }
+  .header-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    flex-shrink: 0;
+  }
+
+  /* ── Layout ── */
+  .main-layout {
+    display: flex;
+    min-height: calc(100vh - 80px);
+  }
+
+  .map-area {
+    flex: 1;
+    padding: 48px;
+    overflow-y: auto;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ── Right panel ── */
+  #panel {
+    width: 0;
+    min-width: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    overflow: hidden;
+    transition: width 0.25s ease, min-width 0.25s ease;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+  #panel.open {
+    width: 340px;
+    min-width: 340px;
+  }
+  .panel-inner {
+    padding: 32px 28px;
+    min-width: 340px;
+  }
+  #panel-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    float: right;
+    margin-bottom: 20px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  #panel-close:hover { background: var(--tag-bg); border-color: var(--border-active); color: var(--text-primary); }
+
+  .panel-icon-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 8px 0 16px;
+    clear: both;
+  }
+  #panel-emoji {
+    font-size: 1.6rem;
+    line-height: 1;
+    display: none;
+  }
+  #panel-img {
+    width: 40px; height: 40px;
+    object-fit: contain;
+    image-rendering: auto;
+    display: none;
+  }
+  #panel-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.4;
+  }
+  #panel-body {
+    font-size: 0.8rem;
+    line-height: 1.75;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    margin-top: 4px;
+  }
+  #panel-body ul { padding-left: 16px; margin: 8px 0; }
+  #panel-body li { margin-bottom: 6px; }
+  #panel-body strong { color: var(--text-primary); font-weight: 600; }
+  #panel-body code {
+    background: var(--tag-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+  }
+  #panel-body p { margin-bottom: 10px; }
+
+  /* ── Section label ── */
+  .section-label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  /* ── Pipeline row ── */
+  .bridge-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+
+  .bridge-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 12px;
+    color: var(--text-muted);
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    gap: 4px;
+    user-select: none;
+  }
+  .bridge-arrow .arrow-line {
+    width: 56px;
+    height: 1px;
+    background: var(--border);
+    position: relative;
+  }
+  .bridge-arrow .arrow-line::after {
+    content: '›';
+    position: absolute;
+    right: -7px;
+    top: -8px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    line-height: 1;
+  }
+
+  /* ── Down arrow ── */
+  .down-arrow {
+    display: flex;
+    justify-content: center;
+    margin: 8px 0;
+    color: var(--border);
+    font-size: 1rem;
+  }
+
+  /* ── Node card ── */
+  .node {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 22px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+  }
+  .node:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: #c5c9d0;
+  }
+  .node.active {
+    border-color: var(--border-active);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+  }
+  .node-emoji { font-size: 1.5rem; margin-bottom: 8px; display: block; }
+  .node-icon-img {
+    width: 44px; height: 44px;
+    object-fit: contain;
+    margin: 0 auto 8px;
+    display: block;
+    image-rendering: auto;
+  }
+  .node-title { font-size: 0.82rem; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+  .node-sub { font-size: 0.68rem; color: var(--text-muted); margin-top: 3px; }
+
+  /* ── Row layouts ── */
+  .row-center {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .row-center .node { min-width: 150px; max-width: 210px; }
+
+  /* ── Divider ── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 52px 0 36px;
+  }
+  .section-divider::before,
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .section-divider-label {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+  }
+
+  /* ── Tips grid ── */
+  .tips-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .tips-grid .node {
+    min-width: 150px;
+    max-width: 180px;
+    flex: 0 1 160px;
+  }
+
+  /* ── Connector line ── */
+  .connector-line {
+    flex: 1;
+    max-width: 80px;
+    height: 1px;
+    background: var(--border);
+    align-self: center;
+  }
+
+  /* ── Hint ── */
+  .hint {
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 20px;
+    letter-spacing: 0.02em;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="header-dot"></div>
+  <div>
+    <h1>Proofreader Skill Finder</h1>
+    <p>Bridging Nova2.0 translations and 小墨 proofreading · Click any node to explore</p>
+  </div>
+</div>
+
+<div class="main-layout">
+  <div class="map-area">
+
+    <!-- ── SECTION 1: THE PIPELINE ── -->
+    <div class="section-label"></div>
+
+    <div class="row-center" style="margin-bottom:16px;">
+      <div class="node" data-id="nova" style="min-width:150px; max-width:190px;">
+        <img class="node-icon-img" src="icon-nova.png" alt="Nova2.0">
+        <div class="node-title">Nova2.0</div>
+        <div class="node-sub">Analysis & Translation Agents</div>
+      </div>
+
+      <div class="connector-line"></div>
+
+      <div class="node" data-id="xiaomo" style="min-width:150px; max-width:190px;">
+        <img class="node-icon-img" src="icon-xiaomo.png" alt="小墨">
+        <div class="node-title">小墨</div>
+        <div class="node-sub">Proofreading Agent</div>
+      </div>
+    </div>
+
+    <div class="row-center" style="margin-bottom:16px;">
+      <div class="node" data-id="app" style="min-width:170px; max-width:210px;">
+        <span class="node-emoji">✦</span>
+        <div class="node-title">Proofreader Skill Finder</div>
+        <div class="node-sub">Tool to Empower 小墨</div>
+      </div>
+    </div>
+
+    <div class="row-center" style="margin-top:8px;">
+      <div class="node" data-id="features">
+        <span class="node-emoji">⚙</span>
+        <div class="node-title">App Functions</div>
+        <div class="node-sub">Skill file · History</div>
+      </div>
+      <div class="node" data-id="challenges">
+        <span class="node-emoji">⚡</span>
+        <div class="node-title">Challenges</div>
+        <div class="node-sub">What I ran into</div>
+      </div>
+    </div>
+
+    <div class="hint">Click any node to see details</div>
+
+    <!-- ── SECTION 2: VIBE CODING TIPS ── -->
+    <div class="section-divider">
+      <div class="section-divider-label">Vibe Coding Tips — Building Fast with AI</div>
+    </div>
+
+    <div class="section-label">Few tips on AI-assisted coding</div>
+
+    <div class="tips-grid">
+      <div class="node" data-id="tip-repo">
+        <span class="node-emoji">⬡</span>
+        <div class="node-title">Version Control</div>
+        <div class="node-sub">Local or cloud repo</div>
+      </div>
+      <div class="node" data-id="tip-prompt">
+        <span class="node-emoji">◈</span>
+        <div class="node-title">Prompt Well</div>
+        <div class="node-sub">Function · limits · UI</div>
+      </div>
+      <div class="node" data-id="tip-iterate">
+        <span class="node-emoji">↺</span>
+        <div class="node-title">Iterate</div>
+        <div class="node-sub">Small steps, test often</div>
+      </div>
+      <div class="node" data-id="tip-security">
+        <span class="node-emoji">◻</span>
+        <div class="node-title">Security</div>
+        <div class="node-sub">OWASP Top 10 · Snyk</div>
+      </div>
+      <div class="node" data-id="tip-deploy">
+        <span class="node-emoji">▲</span>
+        <div class="node-title">Deploy</div>
+        <div class="node-sub">Cloud push · Titan clone</div>
+      </div>
+    </div>
+
+  </div><!-- end map-area -->
+
+  <!-- ── RIGHT PANEL ── -->
+  <div id="panel">
+    <div class="panel-inner">
+      <button id="panel-close" onclick="closePanel()">✕</button>
+      <div class="panel-icon-wrap">
+        <span id="panel-emoji"></span>
+        <img id="panel-img" alt="">
+      </div>
+      <div id="panel-title"></div>
+      <div id="panel-body"></div>
+    </div>
+  </div>
+
+</div><!-- end main-layout -->
+
+<script>
+const DATA = {
+  nova: {
+    emoji: null,
+    img: 'icon-nova.png',
+    title: 'Nova2.0 — Translation Agent',
+    body: `
+      <p>Nova2.0 is the AI-powered localisation engine handling <strong>Chinese → multi-language</strong> game translation at scale.</p>
+      <ul>
+        <li><strong>Analysis Agent</strong> — understands context, terminology, and tone from source content</li>
+        <li><strong>Translation Agent</strong> — generates target-language text for each string</li>
+      </ul>
+      <p>Nova2.0's output is what human proofreaders review and correct — and those corrections are the raw data that feeds into the Proofreader Skill Finder.</p>
+    `
+  },
+  xiaomo: {
+    emoji: null,
+    img: 'icon-xiaomo.png',
+    title: '小墨 — Proofreading Agent',
+    body: `
+      <p>小墨 is the AI proofreading agent responsible for QA-ing translated game strings before they ship.</p>
+      <ul>
+        <li>Reviews Nova2.0's translations for accuracy, tone, and consistency</li>
+        <li>Flags issues across content types: UI text, dialogue, item descriptions, loading screens</li>
+        <li>Relies on a <strong>Skill file</strong> as her knowledge base — without one, she has no awareness of recurring mistakes or proofreader preferences</li>
+      </ul>
+      <p>The Proofreader Skill Finder generates that Skill file automatically from real correction data, so 小墨 can improve with every sprint.</p>
+    `
+  },
+  app: {
+    emoji: '✦',
+    title: 'Proofreader Skill Finder',
+    body: `
+      <p>This tool sits between Nova2.0 and 小墨, turning human correction data into actionable AI knowledge.</p>
+      <ul>
+        <li>Upload a proofreader's <code>.xlsx</code> correction dataset (TextID · CHS · Target · Target PR · EXTRA)</li>
+        <li>The pipeline diffs AI output vs human corrections, classifies content types, and sends patterns to an LLM</li>
+        <li>Output: a structured <code>.md</code> Skill file with 4 sections:
+          <ul>
+            <li>Correction Patterns by Content Type</li>
+            <li>Human Inconsistencies</li>
+            <li>Red Flags checklist</li>
+            <li>What the AI already gets right</li>
+          </ul>
+        </li>
+        <li>小墨 could use this tool to generate Skill file and use them directly as her proofreading knowledge base</li>
+        <li>Supports 11 target languages</li>
+        <li>External URL: <a href=https://proofreader-skill-finder.vercel.app/ target="_blank">https://proofreader-skill-finder.vercel.app/</a></li>
+        <li>Internal URL: <a href=https://6c1ee5b4.titan.mihoyo.com target="_blank">https://6c1ee5b4.titan.mihoyo.com</a></li>
+      </ul>
+    `
+  },
+  features: {
+    emoji: '⚙',
+    title: 'App Functions',
+    body: `
+      <p><strong>Skill File Generator</strong></p>
+      <ul>
+        <li>7-step analysis pipeline streamed live to the browser</li>
+        <li>Word-level diff engine — CJK-aware (JP, KR, TH tokenised character by character)</li>
+        <li>Content type inference from TextID keywords</li>
+        <li>LLM analysis produces the 4-section Skill file</li>
+        <li>One-click <code>.md</code> download</li>
+      </ul>
+      <p><strong>History Page</strong></p>
+      <ul>
+        <li>Stores last 3 runs in Neon (database) + Vercel Blob (file storage)</li>
+        <li>Re-download Skill file or original <code>.xlsx</code> from any past run</li>
+        <li>Expandable preview and delete per entry</li>
+      </ul>
+    `
+  },
+  challenges: {
+    emoji: '⚡',
+    title: 'Challenges When Building',
+    body: `
+      <ul>
+        <li><strong>LLM gateway firewall</strong> — the internal miHoYo gateway is only reachable from inside the corporate network. Public cloud platforms are blocked at the firewall level.</li>
+        <li><strong>SDK mismatch</strong> — the gateway uses an OpenAI-compatible API format, not Anthropic's native format. Required switching SDKs.</li>
+        <li><strong>Streaming vs buffering</strong> — non-streaming calls hung waiting for the full LLM response. Streaming with a smaller token budget was needed to stay within gateway timeout limits.</li>
+        <li><strong>Rate limits</strong> — Gemini free tier fallback hit 15 RPM limits immediately under test load.</li>
+        <li><strong>No error message errors</strong> — had to create test-gateway and print error message to get better idea on the problem.</li>
+      </ul>
+    `
+  },
+  'tip-repo': {
+    emoji: '⬡',
+    title: 'Version Control First',
+    body: `
+      <ul>
+        <li>Create a local git repo immediately — <code>git init</code></li>
+        <li>Push to a cloud host (GitHub / GitLab) early, even before the app works</li>
+        <li>Use a <strong>private repo</strong> if the code contains API keys or internal data</li>
+        <li>Commit after every meaningful change — makes rollbacks painless</li>
+        <li>Clone to internal infrastructure:<br><code>git clone https://github.com/… /data/projects/user/project</code></li>
+      </ul>
+    `
+  },
+  'tip-prompt': {
+    emoji: '◈',
+    title: 'Prompt Well from the Start',
+    body: `
+      <ul>
+        <li>Describe the <strong>function</strong> — what the app does, inputs, outputs</li>
+        <li>State <strong>limitations</strong> upfront — file size caps, row limits, supported formats</li>
+        <li>Specify <strong>UI preferences</strong> — colour palette, layout style, behaviour</li>
+        <li>Name the <strong>tech stack</strong> — framework, database, hosting platform</li>
+        <li>The more context the AI has at the start, the less back-and-forth later</li>
+      </ul>
+    `
+  },
+  'tip-iterate': {
+    emoji: '↺',
+    title: 'Iterate in Small Steps',
+    body: `
+      <ul>
+        <li>Add one feature at a time and test before moving on</li>
+        <li>Share the <strong>exact error message</strong> — don't paraphrase</li>
+        <li>Watch for <strong>infinite loops</strong> — AI can generate retry logic that never stops</li>
+        <li>Check for <strong>security vulnerabilities</strong> at each iteration</li>
+        <li>Example: <em>add error display</em> → <em>show full backend error</em> → <em>redact stack traces in prod</em></li>
+      </ul>
+    `
+  },
+  'tip-security': {
+    emoji: '◻',
+    title: 'Security Checklist',
+    body: `
+      <p>Review against <strong>OWASP Top 10</strong> at every iteration:</p>
+      <ul>
+        <li><strong>Broken Access Control</strong> — users accessing data they shouldn't</li>
+        <li><strong>Cryptographic Failures</strong> — sensitive data not encrypted</li>
+        <li><strong>Injection</strong> — SQL injection, prompt injection, XSS</li>
+        <li><strong>Insecure Design</strong> — security not considered in architecture</li>
+        <li><strong>Security Misconfiguration</strong> — default passwords, open storage</li>
+        <li><strong>Vulnerable Components</strong> — outdated libraries with known exploits</li>
+        <li><strong>Authentication Failures</strong> — weak login, no rate limiting</li>
+        <li><strong>Integrity Failures</strong> — unverified updates or pipelines</li>
+        <li><strong>Logging Failures</strong> — attacks going undetected</li>
+        <li><strong>SSRF</strong> — server tricked into making unintended requests</li>
+      </ul>
+      <p>Also run <strong>Snyk</strong> to catch vulnerable dependencies automatically.</p>
+    `
+  },
+  'tip-deploy': {
+    emoji: '▲',
+    title: 'Deploy Early and Often',
+    body: `
+      <ul>
+        <li>Connect your cloud repo to a hosting platform for automatic deploys on every push</li>
+        <li>Set environment variables in the hosting platform — never commit secrets to git</li>
+        <li>Test in production — network rules, firewalls, and timeouts behave differently than local</li>
+        <li>Clone to internal infrastructure for corporate network access:<br>
+          <code>git clone https://github.com/iamhertang/proofreader-skill-finder.git /data/projects/user/helloworld</code>
+        </li>
+      </ul>
+    `
+  },
+}
+
+let activeId = null
+
+function openPanel(id) {
+  const d = DATA[id]
+  if (!d) return
+  if (activeId) document.querySelector(`[data-id="${activeId}"]`)?.classList.remove('active')
+  if (activeId === id) { closePanel(); return }
+  activeId = id
+  document.querySelector(`[data-id="${id}"]`)?.classList.add('active')
+
+  const emojiEl = document.getElementById('panel-emoji')
+  const imgEl = document.getElementById('panel-img')
+  if (d.img) {
+    emojiEl.style.display = 'none'
+    imgEl.src = d.img
+    imgEl.style.display = 'block'
+  } else {
+    imgEl.style.display = 'none'
+    emojiEl.textContent = d.emoji || ''
+    emojiEl.style.display = 'block'
+  }
+
+  document.getElementById('panel-title').textContent = d.title
+  document.getElementById('panel-body').innerHTML = d.body
+  document.getElementById('panel').classList.add('open')
+}
+
+function closePanel() {
+  if (activeId) document.querySelector(`[data-id="${activeId}"]`)?.classList.remove('active')
+  activeId = null
+  document.getElementById('panel').classList.remove('open')
+}
+
+document.querySelectorAll('.node').forEach(n => {
+  n.addEventListener('click', () => openPanel(n.dataset.id))
+})
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel() })
+</script>
+</body>
+</html>
